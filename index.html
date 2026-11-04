@@ -137,7 +137,9 @@ dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:1
       </div>
       <button class="btn sec" id="b-cancel-target" style="display:none;margin-top:10px" onclick="cancelTarget()">Annuler</button>
     </div>
-    <button class="btn acc" onclick="openCreate('')">➕ Nouvel article sans code-barres</button>
+    <button class="btn acc" onclick="openCreate('');pickPhoto()">📸 Nouvel article par photo d'étiquette</button>
+    <div style="height:10px"></div>
+    <button class="btn sec" onclick="openCreate('')">➕ Nouvel article (saisie manuelle)</button>
   </section>
 
   <!-- STOCK -->
@@ -209,6 +211,7 @@ dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:1
 <div id="ov" onclick="closeSheet()"></div>
 <div id="sheet"></div>
 <div id="toast"></div>
+<input type="file" id="photo-in" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(this)">
 <div id="print"></div>
 
 <script src="core.js"></script>
@@ -244,7 +247,7 @@ function api(action, data) {
     .then(function (j) { setSync(''); if (!j.ok) throw new Error(j.error || 'Erreur serveur'); return j; })
     .catch(function (e) {
       setSync('off');
-      if (e instanceof TypeError) throw new Error('Pas de connexion au serveur. Vérifie le réseau.');
+      if (e instanceof TypeError || e instanceof SyntaxError) throw new Error('Serveur injoignable. Vérifie : réseau, adresse en /exec, et accès « Tout le monde » dans le déploiement Google.');
       throw e;
     });
 }
@@ -272,6 +275,7 @@ var Demo = {
     if (!this.db) this.load();
     var db = this.db, r;
     if (b.action === 'ping') return { ok: true };
+    if (b.action === 'analyze') throw new Error('La lecture photo fonctionne uniquement avec le serveur Google (pas en mode démo)');
     if (b.action === 'load') return { ok: true, articles: JSON.parse(JSON.stringify(db.articles)), locs: db.locs, cats: db.cats };
     if (b.action === 'history') return { ok: true, history: db.mvts.filter(function (m) { return m.ID === b.id; }).slice(-30).reverse() };
     var fn = { create: function () { return Core.create(db, b.article, b.user); }, move: function () { return Core.move(db, b, b.user); },
@@ -486,7 +490,8 @@ var UNITS = ['pièce', 'm', 'boîte', 'sachet', 'carton', 'couronne', 'touret', 
 function unitOptions(sel) { return UNITS.map(function (u) { return '<option' + (u === sel ? ' selected' : '') + '>' + u + '</option>'; }).join(''); }
 
 function articleForm(a, isNew) {
-  return '<label>Désignation *</label><input id="f-Designation" value="' + esc(a.Designation) + '" placeholder="ex : Disjoncteur 2A courbe C">' +
+  return '<button class="btn acc" id="b-photo" onclick="pickPhoto()" style="margin-top:6px">📸 Remplir avec une photo de l\'étiquette</button>' +
+    '<label>Désignation *</label><input id="f-Designation" value="' + esc(a.Designation) + '" placeholder="ex : Disjoncteur 2A courbe C">' +
     '<div class="grid2"><div><label>Marque</label><input id="f-Marque" value="' + esc(a.Marque) + '"></div>' +
     '<div><label>Référence fabricant</label><input id="f-Reference" value="' + esc(a.Reference) + '" autocapitalize="characters"></div></div>' +
     '<label>Catégorie</label><select id="f-Categorie" onchange="previewPlace()">' + catOptions(a.Categorie || 'Divers') + '</select>' +
@@ -554,6 +559,53 @@ function doEdit(id) {
   $('ego').disabled = true;
   api('update', { id: id, fields: f }).then(function (j) { upsert(j.article); toast('Modifié ✓'); showArticle(j.article); })
     .catch(function (e) { $('ego').disabled = false; toast(e.message, true); });
+}
+
+/* ---------- Lecture d'étiquette par photo ---------- */
+function pickPhoto() { var i = $('photo-in'); i.value = ''; i.click(); }
+function resizeImage(file, max) {
+  return new Promise(function (ok, ko) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var r = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement('canvas'); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      ok(c.toDataURL('image/jpeg', 0.85).split(',')[1]);
+    };
+    img.onerror = function () { ko(new Error('Photo illisible')); };
+    img.src = url;
+  });
+}
+function onPhoto(input) {
+  var file = input.files && input.files[0]; if (!file) return;
+  var b = $('b-photo'); if (b) { b.disabled = true; b.textContent = '⏳ Lecture de l\'étiquette…'; }
+  resizeImage(file, 1600).then(function (img) { return api('analyze', { image: img }); }).then(function (j) {
+    fillFromLabel(j.fields || {});
+  }).catch(function (e) { toast(e.message, true); }).then(function () {
+    var b = $('b-photo'); if (b) { b.disabled = false; b.textContent = '📸 Remplir avec une photo de l\'étiquette'; }
+  });
+}
+function fillFromLabel(f) {
+  if (!$('f-Designation')) return;
+  // l'article existe déjà ?
+  var codes = Core.splitCodes(f.Codes);
+  for (var i = 0; i < codes.length; i++) {
+    var ex = Core.findByCode(S.articles, codes[i]);
+    if (ex && $('f-mode').value === 'new') {
+      if (confirm('Cet article existe déjà : ' + ex.Designation + ' (' + ex.Emplacement + '). Ouvrir sa fiche ?')) return showArticle(ex);
+    }
+  }
+  var n = 0;
+  ['Designation', 'Marque', 'Reference'].forEach(function (k) { if (f[k]) { $('f-' + k).value = f[k]; n++; } });
+  if (f.Categorie) { $('f-Categorie').value = f.Categorie; n++; previewPlace(); }
+  if (f.Unite) $('f-Unite').value = f.Unite;
+  if (codes.length) {
+    var cur = Core.splitCodes($('f-Codes').value);
+    codes.forEach(function (c) { if (cur.indexOf(c) < 0) cur.push(c); }); $('f-Codes').value = cur.join(', '); n++;
+  }
+  var notes = [f.Conditionnement, f.Notes].filter(Boolean).join(' — ');
+  if (notes && !$('f-Notes').value) $('f-Notes').value = notes;
+  toast(n ? 'Champs remplis ✓ Vérifie avant de valider' : 'Rien de lisible, reprends la photo de plus près', !n);
 }
 
 function showUnknown(code) {
