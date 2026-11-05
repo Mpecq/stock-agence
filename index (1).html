@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f3a5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Stock">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<title>Stock Agence</title>
+<style>
+:root{--bg:#f2f4f7;--card:#fff;--ink:#16202c;--mute:#667085;--line:#e3e7ee;--pri:#1f3a5f;--acc:#f5a524;--ok:#12805c;--bad:#c4321f;--r:14px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;display:flex;align-items:center;gap:10px}
+header h1{font-size:18px;margin:0;flex:1;letter-spacing:.2px}
+header .who{font-size:13px;opacity:.85}
+#sync{width:10px;height:10px;border-radius:50%;background:#7bd389}
+#sync.off{background:var(--bad)}#sync.busy{background:var(--acc)}
+#demo-band{display:none;background:var(--acc);color:#3a2600;text-align:center;font-size:13px;font-weight:600;padding:4px}
+main{padding:14px 14px 100px;max-width:720px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:6;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:8px 2px 9px;font-size:11.5px;color:var(--mute);display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+nav button .i{font-size:22px;line-height:1}
+nav button.on{color:var(--pri);font-weight:700}
+nav .badge{position:absolute;top:4px;left:55%;background:var(--bad);color:#fff;border-radius:9px;font-size:10.5px;padding:0 5px;min-width:16px}
+.view{display:none}.view.on{display:block}
+.card{background:var(--card);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:12px;padding:14px;font-weight:700;font-size:16px;background:var(--pri);color:#fff;cursor:pointer}
+.btn.sec{background:#e8edf4;color:var(--pri)}.btn.ok{background:var(--ok)}.btn.bad{background:var(--bad)}.btn.acc{background:var(--acc);color:#2b1d00}
+.btn.sm{padding:9px 12px;font-size:14px;width:auto}
+.btn:disabled{opacity:.5}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:13px;font-weight:600;color:var(--mute);margin:10px 0 4px}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:16px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--pri);border-color:transparent}
+#reader{width:100%;border-radius:var(--r);overflow:hidden;background:#000;display:none}
+#reader video{object-fit:cover}
+.hint{color:var(--mute);font-size:13.5px;text-align:center;margin:8px 0}
+.list .it{display:flex;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+.list .it:last-child{border-bottom:0}
+.it .t{flex:1;min-width:0}.it .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .t small{color:var(--mute);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q{font-weight:800;min-width:46px;text-align:right}.q.low{color:var(--bad)}
+.loc{display:inline-block;font-weight:800;background:#fff4dc;color:#7a4b00;border:1px solid #f3d38c;border-radius:8px;padding:2px 8px;font-size:13px;font-family:ui-monospace,Menlo,monospace;white-space:nowrap}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px}
+.chip{flex:none;border:1px solid var(--line);background:#fff;border-radius:20px;padding:6px 12px;font-size:13.5px}
+.chip.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+/* feuille modale */
+#ov{position:fixed;inset:0;background:rgba(10,20,35,.45);z-index:20;display:none}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--bg);border-radius:20px 20px 0 0;max-height:92vh;overflow:auto;padding:8px 16px calc(20px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .22s ease;max-width:720px;margin:0 auto}
+#sheet.on{transform:none}#ov.on{display:block}
+#sheet .grab{width:44px;height:5px;background:#c9d0da;border-radius:3px;margin:4px auto 10px}
+#sheet h2{margin:4px 0 2px;font-size:20px}
+.sub{color:var(--mute);font-size:14px}
+.big{display:flex;gap:10px;margin:14px 0}
+.big>div{flex:1;background:#fff;border-radius:var(--r);padding:12px;text-align:center}
+.big .k{font-size:12px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.big .v{font-size:30px;font-weight:800;margin-top:2px}
+.big .v.loc2{font-family:ui-monospace,Menlo,monospace;color:#7a4b00}
+.warn{background:#fdecea;color:var(--bad);border-radius:10px;padding:8px 12px;font-weight:600;font-size:14px;margin-bottom:10px}
+.place{background:var(--pri);color:#fff;border-radius:var(--r);padding:20px;text-align:center;margin:14px 0}
+.place .v{font-size:46px;font-weight:900;font-family:ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--acc)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.step{display:flex;align-items:center;gap:10px;margin:8px 0}
+.step button{width:56px;height:56px;border-radius:12px;border:0;background:#e8edf4;font-size:26px;font-weight:800;color:var(--pri)}
+.step input{text-align:center;font-size:28px;font-weight:800;padding:8px}
+dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:14px}dt{color:var(--mute)}dd{margin:0;word-break:break-word}
+.hist{font-size:13.5px}.hist div{padding:6px 0;border-bottom:1px solid var(--line)}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#16202c;color:#fff;padding:10px 16px;border-radius:12px;font-size:14.5px;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+#toast.on{opacity:1}#toast.err{background:var(--bad)}
+.empty{text-align:center;color:var(--mute);padding:26px 8px}
+/* étiquettes */
+#print{display:none}
+.labels{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}
+.lab{border:1px dashed #999;border-radius:2mm;padding:3mm;display:flex;align-items:center;gap:3mm;break-inside:avoid;height:36mm}
+.lab svg{width:28mm;height:28mm;flex:none}
+.lab .lt{min-width:0}
+.lab .lc{font:800 17pt/1.1 ui-monospace,Menlo,monospace}
+.lab .ld{font-size:8.5pt;color:#333;margin-top:1mm;overflow:hidden;max-height:16mm}
+@media print{
+  body{background:#fff}
+  header,nav,main,#ov,#sheet,#toast,#demo-band{display:none!important}
+  #print{display:block}
+  @page{size:A4;margin:8mm}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>📦 Stock Agence</h1>
+  <span class="who" id="who"></span>
+  <span id="sync" title="Synchronisation"></span>
+</header>
+<div id="demo-band">MODE DÉMO — données d'essai stockées sur ce téléphone uniquement</div>
+
+<main>
+  <!-- PREMIER LANCEMENT -->
+  <section class="view" id="v-setup">
+    <div class="card">
+      <h2 style="margin-top:0">Bienvenue 👋</h2>
+      <p class="sub">Configure l'appli une seule fois.</p>
+      <label>Ton prénom et nom</label>
+      <input id="s-name" placeholder="ex : Kevin M." autocomplete="name">
+      <div style="height:12px"></div>
+      <button class="btn acc" onclick="scanInvite()">📷 Scanner le QR d'invitation</button>
+      <div id="setup-reader" style="display:none;margin-top:10px;border-radius:12px;overflow:hidden"></div>
+      <label>…ou colle le lien d'invitation reçu</label>
+      <input id="s-link" placeholder="https://…github.io/stock-agence/#api=…" autocapitalize="off" autocorrect="off" oninput="pasteInvite(this.value)">
+      <details style="margin-top:12px"><summary class="sub">Saisie manuelle</summary>
+      <label>Adresse du serveur (Google)</label>
+      <input id="s-api" placeholder="https://script.google.com/macros/s/…/exec" autocapitalize="off" autocorrect="off">
+      <label>Code d'accès</label>
+      <input id="s-token" autocapitalize="off" autocorrect="off">
+      </details>
+      <div style="height:14px"></div>
+      <button class="btn" onclick="saveSetup()">Valider</button>
+      <div style="height:10px"></div>
+      <button class="btn sec" onclick="startDemo()">Essayer en mode démo</button>
+    </div>
+  </section>
+
+  <!-- SCANNER -->
+  <section class="view" id="v-scan">
+    <div class="card" style="padding:10px">
+      <div id="scan-target" class="warn" style="display:none;background:#fff4dc;color:#7a4b00"></div>
+      <div id="reader"></div>
+      <div id="scan-idle" class="empty" style="padding:30px 10px">
+        <div style="font-size:54px">📷</div>
+        <p>Scanne un code-barres, un QR article ou une étiquette d'emplacement</p>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="b-scan" onclick="toggleScan()">📷 Scanner</button>
+        <button class="btn sec" id="b-torch" onclick="toggleTorch()" style="display:none;flex:0 0 64px">🔦</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <input id="manual" placeholder="Ou tape un code / réf…" autocapitalize="characters" onkeydown="if(event.key==='Enter')manualGo()">
+        <button class="btn sec sm" onclick="manualGo()" style="flex:0 0 auto">OK</button>
+      </div>
+      <button class="btn sec" id="b-cancel-target" style="display:none;margin-top:10px" onclick="cancelTarget()">Annuler</button>
+    </div>
+    <button class="btn acc" onclick="openCreate('');pickPhoto()">📸 Nouvel article par photo d'étiquette</button>
+    <div style="height:10px"></div>
+    <button class="btn sec" onclick="openCreate('')">➕ Nouvel article (saisie manuelle)</button>
+  </section>
+
+  <!-- STOCK -->
+  <section class="view" id="v-stock">
+    <input id="q" type="search" placeholder="🔎 Rechercher (désignation, réf, marque, emplacement…)" oninput="renderStock()">
+    <div class="chips" id="cats" style="margin-top:10px"></div>
+    <div class="card list" id="stock-list"></div>
+  </section>
+
+  <!-- ALERTES -->
+  <section class="view" id="v-alert">
+    <div class="card"><b>Stock bas</b><div class="sub">Articles dont la quantité est au seuil mini ou en dessous.</div></div>
+    <div class="card list" id="alert-list"></div>
+  </section>
+
+  <!-- ÉTIQUETTES -->
+  <section class="view" id="v-labels">
+    <div class="card">
+      <b>Étiquettes d'emplacements</b>
+      <div class="sub">À coller sur chaque case d'étagère. Conseil : imprime depuis un PC sur des planches d'étiquettes A4 (3 colonnes).</div>
+      <label>Zone</label>
+      <select id="l-zone"></select>
+      <div style="height:10px"></div>
+      <button class="btn" onclick="printLocs()">🖨️ Imprimer les étiquettes d'emplacements</button>
+    </div>
+    <div class="card">
+      <b>Étiquettes articles sans code-barres</b>
+      <div class="sub">Pour le matériel qui n'a pas d'EAN fabricant (vrac, tourets, outillage…).</div>
+      <div style="height:10px"></div>
+      <button class="btn" onclick="printArts()">🖨️ Imprimer les étiquettes articles</button>
+    </div>
+  </section>
+
+  <!-- RÉGLAGES -->
+  <section class="view" id="v-set">
+    <div class="card">
+      <label style="margin-top:0">Ton nom</label>
+      <input id="c-name">
+      <label>Adresse du serveur</label>
+      <input id="c-api" autocapitalize="off" autocorrect="off">
+      <label>Code d'accès</label>
+      <input id="c-token" autocapitalize="off" autocorrect="off">
+      <div style="height:12px"></div>
+      <button class="btn" onclick="saveSettings()">Enregistrer</button>
+    </div>
+    <div class="card">
+      <b>Inviter un technicien</b>
+      <div class="sub">Le plus simple : le technicien installe l'appli sur son écran d'accueil, l'ouvre, puis scanne ce QR sur ton téléphone. Tu peux aussi lui envoyer le lien.</div>
+      <div style="height:10px"></div>
+      <button class="btn" onclick="showInviteQr()">🔳 Afficher le QR d'invitation</button>
+      <div style="height:10px"></div>
+      <button class="btn sec" onclick="shareInvite()">🔗 Copier / partager le lien d'invitation</button>
+    </div>
+    <div class="card">
+      <button class="btn sec" onclick="reload(true)">🔄 Recharger les données</button>
+      <div style="height:10px"></div>
+      <button class="btn sec" onclick="resetApp()">Réinitialiser l'appli sur ce téléphone</button>
+      <p class="hint" id="info"></p>
+    </div>
+  </section>
+</main>
+
+<nav id="nav">
+  <button data-v="v-scan" class="on"><span class="i">📷</span>Scanner</button>
+  <button data-v="v-stock"><span class="i">📦</span>Stock</button>
+  <button data-v="v-alert"><span class="i">⚠️</span>Alertes<span class="badge" id="nb-alert" style="display:none"></span></button>
+  <button data-v="v-labels"><span class="i">🏷️</span>Étiquettes</button>
+  <button data-v="v-set"><span class="i">⚙️</span>Réglages</button>
+</nav>
+
+<div id="ov" onclick="closeSheet()"></div>
+<div id="sheet"></div>
+<div id="toast"></div>
+<input type="file" id="photo-in" accept="image/*" capture="environment" style="display:none" onchange="onPhoto(this)">
+<div id="print"></div>
+
+<script src="core.js"></script>
+<script src="lib/qrcode.js"></script>
+<script src="lib/html5-qrcode.min.js"></script>
+<script>
+/* ================= ÉTAT ================= */
+var LS = 'stockAgence.';
+var cfg = { name: ls('name') || '', api: ls('api') || '', token: ls('token') || '' };
+var S = { articles: [], locs: [], cats: [], catFilter: '' };
+var scanner = null, scanning = false, torchOn = false, scanTarget = null, lastHit = { c: '', t: 0 };
+
+function ls(k, v) { try { if (v === undefined) return localStorage.getItem(LS + k); if (v === null) localStorage.removeItem(LS + k); else localStorage.setItem(LS + k, v); } catch (e) { return null; } }
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function fmtQ(n) { n = Number(n) || 0; return (Math.round(n * 1000) / 1000).toLocaleString('fr-FR'); }
+function isLow(a) { return Number(a.SeuilMini) > 0 && Number(a.Quantite) <= Number(a.SeuilMini); }
+function fmtDate(d) { try { return new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch (e) { return d; } }
+
+function toast(msg, err) {
+  var t = $('toast'); t.textContent = msg; t.className = 'on' + (err ? ' err' : '');
+  clearTimeout(toast.h); toast.h = setTimeout(function () { t.className = ''; }, err ? 4200 : 2400);
+}
+function setSync(s) { $('sync').className = s || ''; }
+
+/* ================= API ================= */
+function api(action, data) {
+  var body = Object.assign({ action: action, token: cfg.token, user: cfg.name }, data || {});
+  if (cfg.api === 'demo') return Promise.resolve().then(function () { return Demo.handle(body); });
+  setSync('busy');
+  return fetch(cfg.api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' })
+    .then(function (r) { return r.json(); })
+    .then(function (j) { setSync(''); if (!j.ok) throw new Error(j.error || 'Erreur serveur'); return j; })
+    .catch(function (e) {
+      setSync('off');
+      if (e instanceof TypeError || e instanceof SyntaxError) throw new Error('Serveur injoignable. Vérifie : réseau, adresse en /exec, et accès « Tout le monde » dans le déploiement Google.');
+      throw e;
+    });
+}
+
+/* Mode démo : même logique que le serveur, données dans le téléphone */
+var Demo = {
+  db: null,
+  load: function () {
+    try { this.db = JSON.parse(ls('demoDb')); } catch (e) { this.db = null; }
+    if (!this.db) {
+      var db = { articles: [], mvts: [], locs: Core.defaultLocations(4, 5, 6), cats: Core.CATEGORIES.slice() };
+      [['3245060000001', 'Prise 2P+T 16A blanche', '067111', 'Legrand', 'Appareillage (prises, interrupteurs)', 'pièce', 40, 10],
+       ['3606480000002', 'Disjoncteur 1P+N 16A courbe C', 'A9F74616', 'Schneider', 'Protection & tableaux', 'pièce', 12, 5],
+       ['', 'Câble R2V 3G2,5 (touret)', 'R2V3G25', 'Nexans', 'Câbles & conducteurs', 'm', 180, 50],
+       ['3245060000003', 'Boîte d\'encastrement Ø67 P40', '080041', 'Legrand', 'Appareillage (prises, interrupteurs)', 'pièce', 6, 20],
+       ['', 'Gaine ICTA Ø20 (couronne 100 m)', 'ICTA20', 'Courant', 'Cheminement (tubes, goulottes, chemins de câbles)', 'couronne', 8, 3]
+      ].forEach(function (x) {
+        var r = Core.create(db, { Codes: x[0], Designation: x[1], Reference: x[2], Marque: x[3], Categorie: x[4], Unite: x[5], Quantite: x[6], SeuilMini: x[7] }, 'Démo'); db.mvts.push(r.mvt);
+      });
+      this.db = db; this.save();
+    }
+  },
+  save: function () { ls('demoDb', JSON.stringify(this.db)); },
+  handle: function (b) {
+    if (!this.db) this.load();
+    var db = this.db, r;
+    if (b.action === 'ping') return { ok: true };
+    if (b.action === 'analyze') throw new Error('La lecture photo fonctionne uniquement avec le serveur Google (pas en mode démo)');
+    if (b.action === 'load') return { ok: true, articles: JSON.parse(JSON.stringify(db.articles)), locs: db.locs, cats: db.cats };
+    if (b.action === 'history') return { ok: true, history: db.mvts.filter(function (m) { return m.ID === b.id; }).slice(-30).reverse() };
+    var fn = { create: function () { return Core.create(db, b.article, b.user); }, move: function () { return Core.move(db, b, b.user); },
+      relocate: function () { return Core.relocate(db, b, b.user); }, update: function () { return Core.update(db, b, b.user); },
+      addCode: function () { return Core.addCode(db, b, b.user); } }[b.action];
+    if (!fn) throw new Error('Action inconnue');
+    var snapshot = JSON.stringify(db);
+    try { r = fn(); } catch (e) { this.db = JSON.parse(snapshot); throw e; }
+    db.mvts.push(r.mvt); this.save();
+    return { ok: true, article: JSON.parse(JSON.stringify(r.article)) };
+  }
+};
+
+/* ================= DONNÉES ================= */
+function reload(verbose) {
+  return api('load').then(function (j) {
+    S.articles = j.articles || []; S.locs = j.locs || []; S.cats = j.cats || Core.CATEGORIES;
+    ls('cache', JSON.stringify({ articles: S.articles, locs: S.locs, cats: S.cats }));
+    renderAll(); if (verbose) toast('Données à jour ✓');
+  }).catch(function (e) { toast(e.message, true); });
+}
+function upsert(a) {
+  var i = S.articles.findIndex(function (x) { return x.ID === a.ID; });
+  if (i >= 0) S.articles[i] = a; else S.articles.push(a);
+  renderAll();
+}
+function catNames() { return S.cats.map(function (c) { return c.Nom; }); }
+
+/* ================= NAVIGATION ================= */
+function show(v) {
+  document.querySelectorAll('.view').forEach(function (x) { x.classList.toggle('on', x.id === v); });
+  document.querySelectorAll('#nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
+  $('nav').style.display = v === 'v-setup' ? 'none' : 'flex';
+  if (v !== 'v-scan' && scanning) stopScan();
+  if (v === 'v-set') { $('c-name').value = cfg.name; $('c-api').value = cfg.api; $('c-token').value = cfg.token; $('info').textContent = S.articles.length + ' articles · ' + S.locs.length + ' emplacements'; }
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('#nav button').forEach(function (b) {
+  b.onclick = function () { show(b.dataset.v); if (b.dataset.v === 'v-scan' && !scanning) startScan(); };
+});
+
+function openSheet(html) {
+  $('sheet').innerHTML = '<div class="grab"></div>' + html;
+  $('sheet').scrollTop = 0; $('sheet').classList.add('on'); $('ov').classList.add('on');
+}
+function closeSheet() { $('sheet').classList.remove('on'); $('ov').classList.remove('on'); }
+
+/* ================= SCANNER ================= */
+function startScan() {
+  if (scanning) return;
+  if (typeof Html5Qrcode === 'undefined') { toast('Lecteur indisponible', true); return; }
+  var F = Html5QrcodeSupportedFormats;
+  if (!scanner) scanner = new Html5Qrcode('reader', {
+    verbose: false,
+    formatsToSupport: [F.QR_CODE, F.EAN_13, F.EAN_8, F.CODE_128, F.CODE_39, F.UPC_A, F.UPC_E, F.ITF, F.DATA_MATRIX, F.CODE_93],
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+  });
+  $('scan-idle').style.display = 'none'; $('reader').style.display = 'block';
+  scanner.start({ facingMode: 'environment' }, {
+    fps: 12, qrbox: function (w, h) { return { width: Math.floor(Math.min(w * 0.85, 340)), height: Math.floor(Math.min(h * 0.55, 220)) }; },
+    aspectRatio: 1.25
+  }, onScan, function () { }).then(function () {
+    scanning = true; $('b-scan').textContent = '⏹ Arrêter';
+    try {
+      var caps = scanner.getRunningTrackCapabilities();
+      $('b-torch').style.display = caps && caps.torch ? 'flex' : 'none';
+    } catch (e) { }
+  }).catch(function (e) {
+    $('scan-idle').style.display = 'block'; $('reader').style.display = 'none';
+    toast('Caméra inaccessible : autorise l\'accès à la caméra dans les réglages du navigateur.', true);
+  });
+}
+function stopScan() {
+  if (!scanner || !scanning) return Promise.resolve();
+  scanning = false; torchOn = false; $('b-scan').textContent = '📷 Scanner'; $('b-torch').style.display = 'none';
+  return scanner.stop().catch(function () { }).then(function () { $('scan-idle').style.display = 'block'; $('reader').style.display = 'none'; });
+}
+function toggleScan() { scanning ? stopScan() : startScan(); }
+function toggleTorch() {
+  if (!scanner) return; torchOn = !torchOn;
+  scanner.applyVideoConstraints({ advanced: [{ torch: torchOn }] }).catch(function () { toast('Lampe non disponible', true); });
+}
+function onScan(text) {
+  var now = Date.now();
+  if (text === lastHit.c && now - lastHit.t < 2500) return;
+  lastHit = { c: text, t: now };
+  if (navigator.vibrate) navigator.vibrate(70);
+  stopScan();
+  handleCode(text);
+}
+function manualGo() { var v = $('manual').value.trim(); if (!v) return; $('manual').value = ''; $('manual').blur(); handleCode(v); }
+
+function setTarget(msg, cb) {
+  scanTarget = cb; $('scan-target').textContent = msg; $('scan-target').style.display = 'block';
+  $('b-cancel-target').style.display = 'flex'; closeSheet(); show('v-scan'); startScan();
+}
+function cancelTarget() { var t = scanTarget; scanTarget = null; $('scan-target').style.display = 'none'; $('b-cancel-target').style.display = 'none'; stopScan(); if (t && t.cancel) t.cancel(); }
+
+function locByCode(c) { c = String(c).trim().toUpperCase(); return S.locs.find(function (l) { return String(l.Code).toUpperCase() === c; }); }
+
+function handleCode(raw) {
+  var code = String(raw).trim();
+  if (scanTarget) {
+    var t = scanTarget; scanTarget = null; $('scan-target').style.display = 'none'; $('b-cancel-target').style.display = 'none';
+    t(code); return;
+  }
+  var m = /^LOC:(.+)$/i.exec(code);
+  if (m || locByCode(code)) return showLocation((m ? m[1] : code).toUpperCase());
+  var a = Core.findByCode(S.articles, code);
+  if (!a) { // recherche par référence fabricant
+    var byRef = S.articles.filter(function (x) { return String(x.Reference).toUpperCase() === code.toUpperCase(); });
+    if (byRef.length === 1) a = byRef[0];
+  }
+  if (a) showArticle(a); else showUnknown(code);
+}
+
+/* ================= FICHES ================= */
+function showArticle(a) {
+  a = Core.findById(S.articles, a.ID) || a;
+  openSheet(
+    '<h2>' + esc(a.Designation) + '</h2>' +
+    '<div class="sub">' + esc([a.Marque, a.Reference].filter(Boolean).join(' · ')) + '</div>' +
+    '<div class="big"><div><div class="k">En stock</div><div class="v" style="color:' + (isLow(a) ? 'var(--bad)' : 'inherit') + '">' + fmtQ(a.Quantite) + '</div><div class="sub">' + esc(a.Unite) + '</div></div>' +
+    '<div><div class="k">Emplacement</div><div class="v loc2">' + esc(a.Emplacement || '—') + '</div><div class="sub">' + esc(a.Categorie) + '</div></div></div>' +
+    (isLow(a) ? '<div class="warn">⚠️ Stock bas (seuil mini : ' + fmtQ(a.SeuilMini) + ')</div>' : '') +
+    '<div class="actions">' +
+    '<button class="btn ok" onclick="openQty(\'' + a.ID + '\',\'ENTRÉE\')">➕ Entrée</button>' +
+    '<button class="btn bad" onclick="openQty(\'' + a.ID + '\',\'SORTIE\')">➖ Sortie</button>' +
+    '<button class="btn sec" onclick="openQty(\'' + a.ID + '\',\'INVENTAIRE\')">📋 Inventaire</button>' +
+    '<button class="btn sec" onclick="openMove(\'' + a.ID + '\')">📍 Déplacer</button>' +
+    '<button class="btn sec" onclick="openEdit(\'' + a.ID + '\')">✏️ Modifier</button>' +
+    '<button class="btn sec" onclick="printOne(\'' + a.ID + '\')">🏷️ Étiquette</button>' +
+    '</div>' +
+    '<div class="card" style="margin-top:12px"><dl>' +
+    '<dt>N° interne</dt><dd>' + esc(a.ID) + '</dd>' +
+    '<dt>Codes-barres</dt><dd>' + esc(a.Codes || 'aucun (utiliser l\'étiquette QR)') + '</dd>' +
+    '<dt>Seuil mini</dt><dd>' + fmtQ(a.SeuilMini) + '</dd>' +
+    (a.Notes ? '<dt>Notes</dt><dd>' + esc(a.Notes) + '</dd>' : '') +
+    '<dt>Dernière maj</dt><dd>' + esc(fmtDate(a.DerniereMaj)) + ' — ' + esc(a.MajPar) + '</dd>' +
+    '</dl></div>' +
+    '<div class="card"><b>Historique</b><div class="hist" id="hist"><div class="sub">Chargement…</div></div></div>' +
+    '<button class="btn sec" onclick="closeSheet()">Fermer</button>'
+  );
+  api('history', { id: a.ID }).then(function (j) {
+    var h = j.history || [];
+    $('hist') && ($('hist').innerHTML = h.length ? h.map(function (m) {
+      var q = Number(m.Quantite) || 0;
+      return '<div><b>' + esc(m.Type) + '</b> ' + (q ? (q > 0 ? '+' : '') + fmtQ(q) : '') + ' → ' + fmtQ(m.StockApres) +
+        ' <span class="sub">· ' + esc(fmtDate(m.Date)) + ' · ' + esc(m.Technicien) + (m.Affaire ? ' · Affaire ' + esc(m.Affaire) : '') + (m.Commentaire ? ' · ' + esc(m.Commentaire) : '') + '</span></div>';
+    }).join('') : '<div class="sub">Aucun mouvement</div>');
+  }).catch(function () { $('hist') && ($('hist').innerHTML = '<div class="sub">Historique indisponible hors connexion</div>'); });
+}
+
+function openQty(id, type) {
+  var a = Core.findById(S.articles, id);
+  var title = { 'ENTRÉE': '➕ Entrée en stock', 'SORTIE': '➖ Sortie de stock', 'INVENTAIRE': '📋 Inventaire (quantité comptée)' }[type];
+  var init = type === 'INVENTAIRE' ? a.Quantite : 1;
+  openSheet(
+    '<h2>' + title + '</h2><div class="sub">' + esc(a.Designation) + ' — actuellement ' + fmtQ(a.Quantite) + ' ' + esc(a.Unite) + '</div>' +
+    '<label>' + (type === 'INVENTAIRE' ? 'Quantité réellement présente' : 'Quantité') + ' (' + esc(a.Unite) + ')</label>' +
+    '<div class="step"><button onclick="stepQ(-1)">−</button><input id="qv" type="number" inputmode="decimal" min="0" step="any" value="' + init + '"><button onclick="stepQ(1)">+</button></div>' +
+    (type === 'SORTIE' ? '<label>N° d\'affaire / chantier</label><input id="qa" placeholder="ex : 24-118 Mairie Gruissan" value="' + esc(ls('lastAffaire') || '') + '">' : '') +
+    '<label>Commentaire (facultatif)</label><input id="qc">' +
+    '<div style="height:14px"></div>' +
+    '<button class="btn ' + (type === 'SORTIE' ? 'bad' : 'ok') + '" id="qgo" onclick="doMove(\'' + id + '\',\'' + type + '\')">Valider</button>' +
+    '<div style="height:10px"></div><button class="btn sec" onclick="showArticle({ID:\'' + id + '\'})">Retour</button>'
+  );
+  setTimeout(function () { var i = $('qv'); i.focus(); i.select(); }, 250);
+}
+function stepQ(d) { var i = $('qv'); i.value = Math.max(0, (Number(i.value) || 0) + d); }
+function doMove(id, type) {
+  var qty = Number(String($('qv').value).replace(',', '.'));
+  if (!(qty >= 0) || (type !== 'INVENTAIRE' && qty === 0)) return toast('Quantité invalide', true);
+  var affaire = $('qa') ? $('qa').value.trim() : '';
+  if (affaire) ls('lastAffaire', affaire);
+  $('qgo').disabled = true;
+  api('move', { id: id, type: type, qty: qty, affaire: affaire, comment: $('qc').value.trim() }).then(function (j) {
+    upsert(j.article); toast(type + ' enregistrée ✓'); showArticle(j.article);
+  }).catch(function (e) { $('qgo').disabled = false; toast(e.message, true); });
+}
+
+function locOptions(sel) {
+  return S.locs.filter(function (l) { return String(l.Actif || 'OUI').toUpperCase() !== 'NON'; }).map(function (l) {
+    return '<option' + (l.Code === sel ? ' selected' : '') + ' value="' + esc(l.Code) + '">' + esc(l.Code) + ' — ' + esc(l.Categorie) + '</option>';
+  }).join('');
+}
+function openMove(id) {
+  var a = Core.findById(S.articles, id);
+  var sug = Core.autoPlace(a.Categorie, S.articles.filter(function (x) { return x.ID !== id; }), S.locs);
+  openSheet(
+    '<h2>📍 Déplacer</h2><div class="sub">' + esc(a.Designation) + ' — actuellement en <span class="loc">' + esc(a.Emplacement) + '</span></div>' +
+    '<div style="height:14px"></div><button class="btn" onclick="moveByScan(\'' + id + '\')">📷 Scanner l\'étiquette du nouvel emplacement</button>' +
+    '<label>Ou choisir dans la liste</label><select id="mv">' + locOptions(sug) + '</select>' +
+    '<div style="height:12px"></div><button class="btn ok" onclick="doRelocate(\'' + id + '\',$(\'mv\').value)">Valider</button>' +
+    '<div style="height:10px"></div><button class="btn sec" onclick="showArticle({ID:\'' + id + '\'})">Retour</button>'
+  );
+}
+function moveByScan(id) {
+  var cb = function (code) { doRelocate(id, code.replace(/^LOC:/i, '')); };
+  cb.cancel = function () { showArticle({ ID: id }); };
+  setTarget('Scanne l\'étiquette du nouvel emplacement', cb);
+}
+function doRelocate(id, loc) {
+  loc = String(loc).trim().toUpperCase();
+  if (!locByCode(loc) && !confirm('L\'emplacement ' + loc + ' n\'existe pas dans la liste. Continuer quand même ?')) return showArticle({ ID: id });
+  api('relocate', { id: id, emplacement: loc }).then(function (j) { upsert(j.article); toast('Rangé en ' + loc + ' ✓'); showArticle(j.article); })
+    .catch(function (e) { toast(e.message, true); });
+}
+
+function catOptions(sel) { return catNames().map(function (n) { return '<option' + (n === sel ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join(''); }
+var UNITS = ['pièce', 'm', 'boîte', 'sachet', 'carton', 'couronne', 'touret', 'lot', 'kg', 'rouleau'];
+function unitOptions(sel) { return UNITS.map(function (u) { return '<option' + (u === sel ? ' selected' : '') + '>' + u + '</option>'; }).join(''); }
+
+function articleForm(a, isNew) {
+  return '<button class="btn acc" id="b-photo" onclick="pickPhoto()" style="margin-top:6px">📸 Remplir avec une photo de l\'étiquette</button>' +
+    '<label>Désignation *</label><input id="f-Designation" value="' + esc(a.Designation) + '" placeholder="ex : Disjoncteur 2A courbe C">' +
+    '<div class="grid2"><div><label>Marque</label><input id="f-Marque" value="' + esc(a.Marque) + '"></div>' +
+    '<div><label>Référence fabricant</label><input id="f-Reference" value="' + esc(a.Reference) + '" autocapitalize="characters"></div></div>' +
+    '<label>Catégorie</label><select id="f-Categorie" onchange="previewPlace()">' + catOptions(a.Categorie || 'Divers') + '</select>' +
+    '<div class="grid2">' +
+    (isNew ? '<div><label>Quantité</label><input id="f-Quantite" type="number" inputmode="decimal" min="0" step="any" value="' + (a.Quantite || 0) + '"></div>' : '') +
+    '<div><label>Unité</label><select id="f-Unite">' + unitOptions(a.Unite || 'pièce') + '</select></div>' +
+    '<div><label>Seuil mini (alerte)</label><input id="f-SeuilMini" type="number" inputmode="decimal" min="0" step="any" value="' + (a.SeuilMini || 0) + '"></div></div>' +
+    '<label>Code(s)-barres</label><div class="row"><input id="f-Codes" value="' + esc(a.Codes) + '" placeholder="vide = étiquette QR interne"><button class="btn sec sm" style="flex:0 0 auto" onclick="scanIntoField()">📷</button></div>' +
+    '<label>Notes</label><input id="f-Notes" value="' + esc(a.Notes) + '">';
+}
+function readForm(keys) { var o = {}; keys.forEach(function (k) { var e = $('f-' + k); if (e) o[k] = e.value; }); return o; }
+var formDraft = null;
+function scanIntoField() {
+  formDraft = { mode: $('f-mode') ? $('f-mode').value : '', data: readForm(['Designation', 'Marque', 'Reference', 'Categorie', 'Quantite', 'Unite', 'SeuilMini', 'Codes', 'Notes', 'Emplacement']) };
+  var cb = function (code) { var d = formDraft; d.data.Codes = Core.splitCodes(d.data.Codes).concat([code]).join(', '); reopenForm(d); };
+  cb.cancel = function () { reopenForm(formDraft); };
+  setTarget('Scanne le code-barres de l\'article', cb);
+}
+function reopenForm(d) { if (d.mode && d.mode !== 'new') openEdit(d.mode, d.data); else openCreate(null, d.data); }
+
+function openCreate(code, draft) {
+  var a = draft || { Codes: code || '', Categorie: ls('lastCat') || 'Divers', Unite: 'pièce', Quantite: 1 };
+  openSheet(
+    '<h2>➕ Nouvel article</h2><input type="hidden" id="f-mode" value="new">' + articleForm(a, true) +
+    '<label>Emplacement</label><select id="f-Emplacement"><option value="">Automatique</option>' + locOptions(a.Emplacement) + '</select>' +
+    '<div class="hint" id="pp-hint"></div>' +
+    '<button class="btn ok" id="cgo" onclick="doCreate()">Créer et attribuer une place</button>' +
+    '<div style="height:10px"></div><button class="btn sec" onclick="closeSheet()">Annuler</button>'
+  );
+  previewPlace();
+  if (!a.Designation) setTimeout(function () { $('f-Designation').focus(); }, 250);
+}
+function previewPlace() {
+  var h = $('pp-hint'); if (!h) return;
+  var p = Core.autoPlace($('f-Categorie').value, S.articles, S.locs);
+  var opt = $('f-Emplacement').options[0]; opt.textContent = 'Automatique (proposé : ' + p + ')';
+  h.textContent = '';
+}
+function doCreate() {
+  var d = readForm(['Designation', 'Marque', 'Reference', 'Categorie', 'Quantite', 'Unite', 'SeuilMini', 'Codes', 'Notes', 'Emplacement']);
+  if (!d.Designation.trim()) return toast('La désignation est obligatoire', true);
+  ls('lastCat', d.Categorie);
+  $('cgo').disabled = true;
+  api('create', { article: d }).then(function (j) {
+    upsert(j.article); var a = j.article;
+    if (navigator.vibrate) navigator.vibrate([60, 60, 60]);
+    openSheet(
+      '<h2>✅ Article créé</h2><div class="sub">' + esc(a.Designation) + ' — ' + fmtQ(a.Quantite) + ' ' + esc(a.Unite) + '</div>' +
+      '<div class="place"><div>Range-le en</div><div class="v">' + esc(a.Emplacement) + '</div><div style="opacity:.8;font-size:14px">' + esc(a.Categorie) + '</div></div>' +
+      (!a.Codes ? '<div class="warn" style="background:#fff4dc;color:#7a4b00">Pas de code-barres : imprime son étiquette QR (' + esc(a.ID) + ') pour le scanner ensuite.</div>' : '') +
+      '<div class="actions"><button class="btn sec" onclick="printOne(\'' + a.ID + '\')">🏷️ Étiquette</button><button class="btn sec" onclick="showArticle({ID:\'' + a.ID + '\'})">Voir la fiche</button></div>' +
+      '<div style="height:10px"></div><button class="btn" onclick="closeSheet();show(\'v-scan\');startScan()">📷 Scanner l\'article suivant</button>'
+    );
+  }).catch(function (e) { $('cgo').disabled = false; toast(e.message, true); });
+}
+
+function openEdit(id, draft) {
+  var a = draft ? Object.assign({}, Core.findById(S.articles, id), draft) : Core.findById(S.articles, id);
+  openSheet('<h2>✏️ Modifier</h2><input type="hidden" id="f-mode" value="' + id + '">' + articleForm(a, false) +
+    '<div style="height:14px"></div><button class="btn ok" id="ego" onclick="doEdit(\'' + id + '\')">Enregistrer</button>' +
+    '<div style="height:10px"></div><button class="btn sec" onclick="showArticle({ID:\'' + id + '\'})">Annuler</button>');
+}
+function doEdit(id) {
+  var f = readForm(['Designation', 'Marque', 'Reference', 'Categorie', 'Unite', 'SeuilMini', 'Codes', 'Notes']);
+  $('ego').disabled = true;
+  api('update', { id: id, fields: f }).then(function (j) { upsert(j.article); toast('Modifié ✓'); showArticle(j.article); })
+    .catch(function (e) { $('ego').disabled = false; toast(e.message, true); });
+}
+
+/* ---------- Lecture d'étiquette par photo ---------- */
+function pickPhoto() { var i = $('photo-in'); i.value = ''; i.click(); }
+function resizeImage(file, max) {
+  return new Promise(function (ok, ko) {
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function () {
+      var r = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement('canvas'); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      ok(c.toDataURL('image/jpeg', 0.72).split(',')[1]);
+    };
+    img.onerror = function () { ko(new Error('Photo illisible')); };
+    img.src = url;
+  });
+}
+function onPhoto(input) {
+  var file = input.files && input.files[0]; if (!file) return;
+  var b = $('b-photo'); if (b) { b.disabled = true; b.textContent = '⏳ Lecture de l\'étiquette…'; }
+  var t0 = Date.now(), tick = setInterval(function () {
+    var b = $('b-photo'); if (b) b.textContent = '⏳ Lecture de l\'étiquette… ' + Math.round((Date.now() - t0) / 1000) + ' s';
+  }, 500);
+  resizeImage(file, 1024).then(function (img) { return api('analyze', { image: img }); }).then(function (j) {
+    clearInterval(tick); fillFromLabel(j.fields || {}, (Date.now() - t0) / 1000);
+  }).catch(function (e) { clearInterval(tick); toast(e.message, true); }).then(function () {
+    var b = $('b-photo'); if (b) { b.disabled = false; b.textContent = '📸 Remplir avec une photo de l\'étiquette'; }
+  });
+}
+function fillFromLabel(f, sec) {
+  if (!$('f-Designation')) return;
+  // l'article existe déjà ?
+  var codes = Core.splitCodes(f.Codes);
+  for (var i = 0; i < codes.length; i++) {
+    var ex = Core.findByCode(S.articles, codes[i]);
+    if (ex && $('f-mode').value === 'new') {
+      if (confirm('Cet article existe déjà : ' + ex.Designation + ' (' + ex.Emplacement + '). Ouvrir sa fiche ?')) return showArticle(ex);
+    }
+  }
+  var n = 0;
+  ['Designation', 'Marque', 'Reference'].forEach(function (k) { if (f[k]) { $('f-' + k).value = f[k]; n++; } });
+  if (f.Categorie) { $('f-Categorie').value = f.Categorie; n++; previewPlace(); }
+  if (f.Unite) $('f-Unite').value = f.Unite;
+  if (codes.length) {
+    var cur = Core.splitCodes($('f-Codes').value);
+    codes.forEach(function (c) { if (cur.indexOf(c) < 0) cur.push(c); }); $('f-Codes').value = cur.join(', '); n++;
+  }
+  var notes = [f.Conditionnement, f.Notes].filter(Boolean).join(' — ');
+  if (notes && !$('f-Notes').value) $('f-Notes').value = notes;
+  toast(n ? 'Champs remplis en ' + (sec || 0).toFixed(1).replace('.', ',') + ' s ✓ Vérifie avant de valider' : 'Rien de lisible, reprends la photo de plus près', !n);
+}
+
+function showUnknown(code) {
+  S.uCode = code;
+  openSheet(
+    '<h2>Code inconnu</h2><div class="sub">Code scanné : <b>' + esc(code) + '</b></div>' +
+    '<div style="height:14px"></div><button class="btn ok" onclick="openCreate(S.uCode)">➕ Créer un nouvel article</button>' +
+    '<div style="height:10px"></div>' +
+    '<div class="card"><b>…ou c\'est un article déjà en stock</b><div class="sub">(ex : autre conditionnement) — associe ce code :</div>' +
+    '<input id="uq" placeholder="🔎 Chercher l\'article" style="margin-top:10px" oninput="renderAssoc()"><div class="list" id="ul"></div></div>' +
+    '<button class="btn sec" onclick="closeSheet()">Annuler</button>'
+  );
+}
+function renderAssoc() {
+  var q = ($('uq').value || '').toLowerCase();
+  var list = q ? filterArts(q).slice(0, 20) : [];
+  $('ul').innerHTML = list.map(function (a) {
+    return '<div class="it" onclick="doAssoc(\'' + a.ID + '\')"><div class="t"><b>' + esc(a.Designation) + '</b><small>' + esc([a.Marque, a.Reference].filter(Boolean).join(' · ')) + '</small></div><span class="loc">' + esc(a.Emplacement) + '</span></div>';
+  }).join('');
+}
+function doAssoc(id) {
+  api('addCode', { id: id, code: S.uCode }).then(function (j) { upsert(j.article); toast('Code associé ✓'); showArticle(j.article); })
+    .catch(function (e) { toast(e.message, true); });
+}
+
+function showLocation(code) {
+  var l = locByCode(code);
+  var arts = S.articles.filter(function (a) { return String(a.Emplacement).toUpperCase() === code; });
+  openSheet(
+    '<h2>📍 Emplacement <span class="loc" style="font-size:20px">' + esc(code) + '</span></h2>' +
+    '<div class="sub">' + (l ? esc(l.Categorie) + ' · ' + arts.length + ' / ' + (l.Capacite || 6) + ' articles' : 'Emplacement non répertorié') + '</div>' +
+    '<div class="card list" style="margin-top:12px">' + (arts.length ? arts.map(itemHtml).join('') : '<div class="empty">Case vide</div>') + '</div>' +
+    '<button class="btn sec" onclick="closeSheet()">Fermer</button>'
+  );
+}
+
+/* ================= LISTES ================= */
+function itemHtml(a) {
+  return '<div class="it" onclick="showArticle({ID:\'' + a.ID + '\'})"><div class="t"><b>' + esc(a.Designation) + '</b><small>' +
+    esc([a.Marque, a.Reference].filter(Boolean).join(' · ') || a.Categorie) + '</small></div>' +
+    '<span class="loc">' + esc(a.Emplacement || '—') + '</span><span class="q' + (isLow(a) ? ' low' : '') + '">' + fmtQ(a.Quantite) + '</span></div>';
+}
+function filterArts(q) {
+  var words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  return S.articles.filter(function (a) {
+    var hay = [a.Designation, a.Reference, a.Marque, a.Codes, a.Emplacement, a.ID, a.Categorie, a.Notes].join(' ').toLowerCase();
+    return words.every(function (w) { return hay.indexOf(w) >= 0; });
+  });
+}
+function renderStock() {
+  var q = $('q').value.trim(), list = q ? filterArts(q) : S.articles.slice();
+  if (S.catFilter) list = list.filter(function (a) { return a.Categorie === S.catFilter; });
+  list.sort(function (a, b) { return String(a.Designation).localeCompare(String(b.Designation), 'fr'); });
+  var more = list.length > 300 ? '<div class="hint">' + (list.length - 300) + ' autres… affine la recherche</div>' : '';
+  $('stock-list').innerHTML = list.length ? list.slice(0, 300).map(itemHtml).join('') + more : '<div class="empty">Aucun article</div>';
+}
+function renderCats() {
+  $('cats').innerHTML = ['<button class="chip' + (!S.catFilter ? ' on' : '') + '" data-c="">Tout (' + S.articles.length + ')</button>'].concat(
+    S.cats.map(function (c) {
+      var n = S.articles.filter(function (a) { return a.Categorie === c.Nom; }).length;
+      return '<button class="chip' + (S.catFilter === c.Nom ? ' on' : '') + '" data-c="' + esc(c.Nom) + '">' + esc(c.Zone + ' · ' + c.Nom.split(' (')[0]) + ' (' + n + ')</button>';
+    })).join('');
+  $('cats').querySelectorAll('.chip').forEach(function (b) { b.onclick = function () { S.catFilter = b.dataset.c; renderCats(); renderStock(); }; });
+}
+function renderAlerts() {
+  var low = S.articles.filter(isLow).sort(function (a, b) { return (a.Quantite / a.SeuilMini) - (b.Quantite / b.SeuilMini); });
+  $('alert-list').innerHTML = low.length ? low.map(itemHtml).join('') : '<div class="empty">✅ Aucun article en stock bas</div>';
+  $('nb-alert').style.display = low.length ? 'block' : 'none'; $('nb-alert').textContent = low.length;
+}
+function renderZones() {
+  var zones = {}; S.locs.forEach(function (l) { zones[l.Zone] = l.Categorie; });
+  $('l-zone').innerHTML = '<option value="">Toutes les zones (' + S.locs.length + ' étiquettes)</option>' +
+    Object.keys(zones).sort().map(function (z) { return '<option value="' + esc(z) + '">Zone ' + esc(z) + ' — ' + esc(zones[z]) + '</option>'; }).join('');
+}
+function renderAll() { renderCats(); renderStock(); renderAlerts(); renderZones(); }
+
+/* ================= ÉTIQUETTES ================= */
+function qrSvg(text) { var q = qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true }); }
+function printLabels(items) {
+  if (!items.length) return toast('Rien à imprimer', true);
+  $('print').innerHTML = '<div class="labels">' + items.map(function (it) {
+    return '<div class="lab">' + qrSvg(it.qr) + '<div class="lt"><div class="lc">' + esc(it.big) + '</div><div class="ld">' + esc(it.small) + '</div></div></div>';
+  }).join('') + '</div>';
+  closeSheet(); setTimeout(function () { window.print(); }, 300);
+}
+function printLocs() {
+  var z = $('l-zone').value;
+  printLabels(S.locs.filter(function (l) { return !z || l.Zone === z; }).map(function (l) { return { qr: 'LOC:' + l.Code, big: l.Code, small: l.Categorie }; }));
+}
+function printArts() {
+  printLabels(S.articles.filter(function (a) { return !a.Codes; }).map(function (a) { return { qr: a.ID, big: a.ID, small: a.Designation + (a.Reference ? ' — ' + a.Reference : '') }; }));
+}
+function printOne(id) { var a = Core.findById(S.articles, id); printLabels([{ qr: a.ID, big: a.ID, small: a.Designation + (a.Reference ? ' — ' + a.Reference : '') }]); }
+
+/* ================= CONFIG ================= */
+function applyCfg() {
+  $('who').textContent = cfg.name;
+  $('demo-band').style.display = cfg.api === 'demo' ? 'block' : 'none';
+}
+function saveSetup() {
+  var n = $('s-name').value.trim(), a = $('s-api').value.trim(), t = $('s-token').value.trim();
+  if (!n) return toast('Indique ton nom', true);
+  if (!/^https:\/\//.test(a)) return toast('Adresse du serveur invalide', true);
+  cfg = { name: n, api: a, token: t };
+  api('ping').then(function () { persist(); history.replaceState(null, '', location.pathname); boot(); toast('Connecté ✓'); }).catch(function (e) { toast(e.message, true); });
+}
+function startDemo() {
+  var n = $('s-name').value.trim() || 'Technicien démo';
+  cfg = { name: n, api: 'demo', token: '' }; persist(); boot();
+}
+function persist() { ls('name', cfg.name); ls('api', cfg.api); ls('token', cfg.token); applyCfg(); }
+function saveSettings() {
+  var c = { name: $('c-name').value.trim(), api: $('c-api').value.trim(), token: $('c-token').value.trim() };
+  if (!c.name) return toast('Indique ton nom', true);
+  var old = cfg; cfg = c;
+  api('ping').then(function () { persist(); reload(true); }).catch(function (e) { cfg = old; toast(e.message, true); });
+}
+function inviteUrl() {
+  return location.origin + location.pathname + '#api=' + encodeURIComponent(cfg.api) + '&token=' + encodeURIComponent(cfg.token);
+}
+function parseInvite(text) {
+  var t = String(text || '').trim(), i = t.search(/[#?]api=/);
+  if (i < 0) return null;
+  var p = new URLSearchParams(t.slice(i + 1));
+  var api = p.get('api'); if (!api || !/^https:\/\//.test(api)) return null;
+  return { api: api, token: p.get('token') || '' };
+}
+function applyInvite(inv) {
+  $('s-api').value = inv.api; $('s-token').value = inv.token;
+  if (!$('s-name').value.trim()) { toast('Lien reconnu ✓ Indique ton nom puis Valider'); $('s-name').focus(); return; }
+  saveSetup();
+}
+function pasteInvite(v) { var inv = parseInvite(v); if (inv) applyInvite(inv); }
+var setupScanner = null;
+function scanInvite() {
+  var box = $('setup-reader'); box.style.display = 'block';
+  if (!setupScanner) setupScanner = new Html5Qrcode('setup-reader', { verbose: false, formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE] });
+  setupScanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: 230 }, function (text) {
+    var inv = parseInvite(text);
+    if (!inv) return;
+    if (navigator.vibrate) navigator.vibrate(70);
+    setupScanner.stop().catch(function () { }).then(function () { box.style.display = 'none'; applyInvite(inv); });
+  }, function () { }).catch(function () { box.style.display = 'none'; toast('Caméra inaccessible : autorise l\'accès à la caméra', true); });
+}
+function showInviteQr() {
+  if (cfg.api === 'demo') return toast('Configure d\'abord le vrai serveur', true);
+  var q = qrcode(0, 'L'); q.addData(inviteUrl()); q.make();
+  openSheet('<h2>🔳 QR d\'invitation</h2><div class="sub">Le technicien ouvre l\'appli Stock (installée sur son écran d\'accueil) → « Scanner le QR d\'invitation ».</div>' +
+    '<div style="background:#fff;padding:16px;border-radius:14px;margin:14px 0">' + q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }) + '</div>' +
+    '<div class="warn">Ce QR contient le code d\'accès : ne le montre qu\'à tes techniciens.</div>' +
+    '<button class="btn sec" onclick="closeSheet()">Fermer</button>');
+}
+function shareInvite() {
+  if (cfg.api === 'demo') return toast('Configure d\'abord le vrai serveur', true);
+  var url = inviteUrl();
+  var txt = 'Appli Stock Agence :\n1) Ouvre ce lien dans Safari (iPhone) ou Chrome (Android)\n2) Ajoute-le à l\'écran d\'accueil\n3) Ouvre l\'appli depuis l\'icône et, si elle le demande, colle de nouveau ce lien.\n' + url;
+  if (navigator.share) navigator.share({ title: 'Stock Agence', text: txt }).catch(function () { });
+  else if (navigator.clipboard) navigator.clipboard.writeText(url).then(function () { toast('Lien copié ✓'); });
+  else prompt('Copie ce lien :', url);
+}
+function resetApp() {
+  if (!confirm('Effacer la configuration de ce téléphone ? (les données du serveur ne sont pas touchées)')) return;
+  ['name', 'api', 'token', 'cache', 'demoDb', 'lastCat', 'lastAffaire'].forEach(function (k) { ls(k, null); });
+  location.hash = ''; location.reload();
+}
+
+/* ================= DÉMARRAGE ================= */
+function boot() {
+  applyCfg();
+  if (!cfg.api) { show('v-setup'); return; }
+  try { var c = JSON.parse(ls('cache')); if (c) { S.articles = c.articles; S.locs = c.locs; S.cats = c.cats; renderAll(); } } catch (e) { }
+  show('v-scan');
+  reload();
+}
+(function init() {
+  // lien d'invitation : #api=...&token=...
+  var inv = parseInvite(location.href);
+  if (inv) {
+    $('s-api').value = inv.api; $('s-token').value = inv.token; $('s-link').value = location.href;
+    if (!cfg.name) { show('v-setup'); applyCfg(); toast('Lien d\'invitation reconnu ✓ Indique ton nom puis Valider'); setTimeout(function () { $('s-name').focus(); }, 300); return; }
+    history.replaceState(null, '', location.pathname);
+    cfg.api = inv.api; cfg.token = inv.token; persist();
+  }
+  boot();
+  setInterval(function () { if (cfg.api && document.visibilityState === 'visible' && !$('sheet').classList.contains('on')) reload(); }, 60000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && cfg.api) reload(); else if (scanning) stopScan(); });
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function () { });
+})();
+</script>
+</body>
+</html>
