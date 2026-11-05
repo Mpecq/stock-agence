@@ -570,7 +570,7 @@ function resizeImage(file, max) {
       var r = Math.min(1, max / Math.max(img.width, img.height));
       var c = document.createElement('canvas'); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
-      ok(c.toDataURL('image/jpeg', 0.85).split(',')[1]);
+      ok(c.toDataURL('image/jpeg', 0.72).split(',')[1]);
     };
     img.onerror = function () { ko(new Error('Photo illisible')); };
     img.src = url;
@@ -579,13 +579,16 @@ function resizeImage(file, max) {
 function onPhoto(input) {
   var file = input.files && input.files[0]; if (!file) return;
   var b = $('b-photo'); if (b) { b.disabled = true; b.textContent = '⏳ Lecture de l\'étiquette…'; }
-  resizeImage(file, 1600).then(function (img) { return api('analyze', { image: img }); }).then(function (j) {
-    fillFromLabel(j.fields || {});
-  }).catch(function (e) { toast(e.message, true); }).then(function () {
+  var t0 = Date.now(), tick = setInterval(function () {
+    var b = $('b-photo'); if (b) b.textContent = '⏳ Lecture de l\'étiquette… ' + Math.round((Date.now() - t0) / 1000) + ' s';
+  }, 500);
+  resizeImage(file, 1024).then(function (img) { return api('analyze', { image: img }); }).then(function (j) {
+    clearInterval(tick); fillFromLabel(j.fields || {}, (Date.now() - t0) / 1000);
+  }).catch(function (e) { clearInterval(tick); toast(e.message, true); }).then(function () {
     var b = $('b-photo'); if (b) { b.disabled = false; b.textContent = '📸 Remplir avec une photo de l\'étiquette'; }
   });
 }
-function fillFromLabel(f) {
+function fillFromLabel(f, sec) {
   if (!$('f-Designation')) return;
   // l'article existe déjà ?
   var codes = Core.splitCodes(f.Codes);
@@ -605,7 +608,7 @@ function fillFromLabel(f) {
   }
   var notes = [f.Conditionnement, f.Notes].filter(Boolean).join(' — ');
   if (notes && !$('f-Notes').value) $('f-Notes').value = notes;
-  toast(n ? 'Champs remplis ✓ Vérifie avant de valider' : 'Rien de lisible, reprends la photo de plus près', !n);
+  toast(n ? 'Champs remplis en ' + (sec || 0).toFixed(1).replace('.', ',') + ' s ✓ Vérifie avant de valider' : 'Rien de lisible, reprends la photo de plus près', !n);
 }
 
 function showUnknown(code) {
