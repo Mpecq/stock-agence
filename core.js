@@ -4,26 +4,50 @@
    ============================================================ */
 var Core = (function () {
 
-  var CATEGORIES = [
-    { Zone: 'A', Nom: 'Câbles & conducteurs' },
-    { Zone: 'B', Nom: 'Cheminement (tubes, goulottes, chemins de câbles)' },
-    { Zone: 'C', Nom: 'Appareillage (prises, interrupteurs)' },
-    { Zone: 'D', Nom: 'Protection & tableaux' },
-    { Zone: 'E', Nom: 'Éclairage' },
-    { Zone: 'F', Nom: 'Connectique & raccordement' },
-    { Zone: 'G', Nom: 'Courant faible / VDI / Sécurité' },
-    { Zone: 'H', Nom: 'Fixations & consommables' },
-    { Zone: 'I', Nom: 'Outillage & mesure' },
-    { Zone: 'J', Nom: 'EPI & sécurité chantier' },
-    { Zone: 'K', Nom: 'Divers' }
+  /* ---- Implantation de l'agence de Perpignan (17/11/2026) ---- */
+  // PLACE : une tablette de 1 m x 1 m = 16 cases de 25 x 25 cm. Capacité des emplacements et place des articles en cases.
+  var PLACES = [
+    { v: 0, l: 'Empilé sur un autre article · 0 case' },
+    { v: 1, l: 'Petit · 1 case (≤ 25 × 25 cm)' },
+    { v: 2, l: 'Moyen · 2 cases (25 × 50 cm)' },
+    { v: 4, l: 'Grand · 4 cases (50 × 50 cm)' },
+    { v: 8, l: 'Très grand · 8 cases (½ tablette)' },
+    { v: 16, l: 'Tablette entière · 16 cases' }
   ];
+  // Niveaux : 1 = en bas, on compte vers le haut. prio = ordre de remplissage automatique (hauteur d'homme d'abord)
+  var NIVEAUX = {
+    std: [{ n: 'N1', d: 'N1 bas (60 cm)', cap: 16, prio: 5 }, { n: 'N2', d: 'N2', cap: 16, prio: 1 }, { n: 'N3', d: 'N3', cap: 16, prio: 2 },
+          { n: 'N4', d: 'N4', cap: 16, prio: 3 }, { n: 'N5', d: 'N5', cap: 16, prio: 4 }, { n: 'DS', d: 'dessus', cap: 16, prio: 6 }],
+    touret: [{ n: 'N1', d: 'râtelier N1 (bas)', cap: 68, prio: 1 }, { n: 'N2', d: 'râtelier N2 (haut)', cap: 68, prio: 2 }],
+    echelle: [{ n: 'N1', d: 'N1', cap: 32, prio: 1 }, { n: 'N2', d: 'N2', cap: 32, prio: 2 }, { n: 'N3', d: 'niveau haut', cap: 32, prio: 3 }],
+    chantier: [{ n: 'N1', d: 'N1 bas (1 m)', cap: 16, prio: 1 }, { n: 'N2', d: 'N2 (40 cm)', cap: 16, prio: 2 },
+               { n: 'N3', d: 'N3 (40 cm)', cap: 16, prio: 3 }, { n: 'DS', d: 'dessus', cap: 16, prio: 4 }],
+    sol: null
+  };
+  var IMPLANTATION = [
+    { Zone: 'A', Nom: 'CFA – courants faibles', racks: ['A1', 'A2', 'A3', 'A4'], niv: 'std', lieu: 'Mur nord' },
+    { Zone: 'B', Nom: 'CFO – courants forts', racks: ['B1', 'B2', 'B3', 'B4'], niv: 'std', lieu: 'Mur ouest' },
+    { Zone: 'M', Nom: 'CVC', racks: ['M1', 'M2'], niv: 'std', lieu: 'Mur ouest' },
+    { Zone: 'L', Nom: 'TCE', racks: ['L1', 'L2', 'L3'], niv: 'std', lieu: 'Mur sud' },
+    { Zone: 'D', Nom: 'Câble', racks: ['D1'], niv: 'touret', lieu: 'Mur nord, râtelier' },
+    { Zone: 'J', Nom: 'Goulottes & tubes IRO', racks: ['J1'], niv: 'echelle', lieu: 'Cloison du sas' },
+    { Zone: 'H', Nom: 'Matériel de chantier', racks: ['H1', 'H2'], niv: 'chantier', lieu: 'Contre stocks sensibles' },
+    { Zone: 'E', Nom: 'Échelles, longueurs & divers', racks: ['E'], niv: 'sol', cap: 76, lieu: 'Mur ouest' },
+    { Zone: 'Z', Nom: 'PIRL / échafaudage', racks: ['Z1', 'Z2'], niv: 'sol', cap: 32, lieu: 'Z1 local technique, Z2 mur sud' },
+    { Zone: 'C', Nom: 'Départ chantier', racks: ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8'], niv: 'std', lieu: 'Îlot central' },
+    { Zone: 'F', Nom: 'Réception commandes', racks: ['F1', 'F2', 'F3'], niv: 'sol', cap: 16, lieu: 'Au sol devant l\'îlot' }
+  ];
+  var CATEGORIES = IMPLANTATION.map(function (z) { return { Zone: z.Zone, Nom: z.Nom }; });
+  var CAT_DEFAUT = 'Échelles, longueurs & divers';
+  // zones de passage : jamais proposées automatiquement à la création d'un article
+  var ZONES_TRANSIT = ['Départ chantier', 'Réception commandes'];
 
   var ART_COLS = ['ID', 'Codes', 'Designation', 'Reference', 'Marque', 'Categorie', 'Unite',
-    'Quantite', 'SeuilMini', 'Emplacement', 'DateCreation', 'DerniereMaj', 'MajPar', 'Notes'];
+    'Quantite', 'SeuilMini', 'Emplacement', 'DateCreation', 'DerniereMaj', 'MajPar', 'Notes', 'Place'];
   var MVT_COLS = ['Date', 'Technicien', 'Type', 'ID', 'Designation', 'Quantite', 'StockApres',
     'Emplacement', 'Affaire', 'Commentaire'];
-  var LOC_COLS = ['Code', 'Zone', 'Categorie', 'Capacite', 'Actif'];
-  var EDITABLE = ['Designation', 'Reference', 'Marque', 'Categorie', 'Unite', 'SeuilMini', 'Notes'];
+  var LOC_COLS = ['Code', 'Zone', 'Categorie', 'Capacite', 'Actif', 'Priorite', 'Description'];
+  var EDITABLE = ['Designation', 'Reference', 'Marque', 'Categorie', 'Unite', 'SeuilMini', 'Notes', 'Place'];
 
   function pad(n, l) { n = String(n); while (n.length < l) n = '0' + n; return n; }
   function now() { return new Date().toISOString(); }
@@ -33,14 +57,19 @@ var Core = (function () {
   }
   function num(v) { var n = Number(String(v).replace(',', '.')); return isFinite(n) ? n : NaN; }
 
-  /** Emplacements par défaut : 1 zone par catégorie, 4 étagères x 5 niveaux, 6 articles par case */
-  function defaultLocations(etageres, niveaux, capacite) {
-    etageres = etageres || 4; niveaux = niveaux || 5; capacite = capacite || 6;
+  /** Emplacements : A1-N1 = étagère A1, niveau 1 (en bas) … A1-DS = dessus ; E, F1, Z1 = zones au sol */
+  function defaultLocations() {
     var out = [];
-    CATEGORIES.forEach(function (c) {
-      for (var e = 1; e <= etageres; e++) for (var n = 1; n <= niveaux; n++) {
-        out.push({ Code: c.Zone + '-' + pad(e, 2) + '-' + n, Zone: c.Zone, Categorie: c.Nom, Capacite: capacite, Actif: 'OUI' });
-      }
+    IMPLANTATION.forEach(function (z) {
+      z.racks.forEach(function (r) {
+        var niv = NIVEAUX[z.niv];
+        if (!niv) {
+          out.push({ Code: r, Zone: z.Zone, Categorie: z.Nom, Capacite: z.cap || 16, Actif: 'OUI', Priorite: 1, Description: z.Nom + ' – au sol' });
+        } else niv.forEach(function (l) {
+          out.push({ Code: r + '-' + l.n, Zone: z.Zone, Categorie: z.Nom, Capacite: l.cap, Actif: 'OUI', Priorite: l.prio,
+            Description: z.Nom + ' – étagère ' + r + ', ' + l.d });
+        });
+      });
     });
     return out;
   }
@@ -60,25 +89,42 @@ var Core = (function () {
     }
     return null;
   }
-  function occupancy(articles) {
+  function placeVal(v) { if (v === '' || v === null || v === undefined) return 1; var n = Number(v); return isFinite(n) && n >= 0 ? n : 1; }
+  function placeOf(a) { return placeVal(a && a.Place); }
+  function capOf(l) { var c = Number(l && l.Capacite); return c > 0 ? c : 16; }
+  /** cases occupées par emplacement (exceptId = article à ne pas compter, ex. celui qu'on déplace) */
+  function occupancy(articles, exceptId) {
     var occ = {};
-    articles.forEach(function (a) { var e = norm(a.Emplacement); if (e) occ[e] = (occ[e] || 0) + 1; });
+    articles.forEach(function (a) {
+      if (exceptId && a.ID === exceptId) return;
+      var e = norm(a.Emplacement).toUpperCase(); if (e) occ[e] = (occ[e] || 0) + placeOf(a);
+    });
     return occ;
+  }
+  function fill(code, articles, locs, exceptId) {
+    code = norm(code).toUpperCase();
+    var l = null; for (var i = 0; i < locs.length; i++) if (String(locs[i].Code).toUpperCase() === code) l = locs[i];
+    var used = occupancy(articles, exceptId)[code] || 0, cap = l ? capOf(l) : 0;
+    return { used: used, cap: cap, free: cap - used, known: !!l };
   }
   function isActive(l) { return String(l.Actif || 'OUI').toUpperCase() !== 'NON'; }
 
   /** Attribue la première case libre de la zone de la catégorie (sinon zone Divers) */
-  function autoPlace(cat, articles, locs) {
-    var occ = occupancy(articles);
+  function autoPlace(cat, articles, locs, place, exceptId) {
+    var occ = occupancy(articles, exceptId), need = placeVal(place);
     function pick(c) {
       var cand = locs.filter(function (l) { return l.Categorie === c && isActive(l); })
-        .sort(function (a, b) { return String(a.Code).localeCompare(String(b.Code)); });
+        .sort(function (a, b) {
+          var ra = String(a.Code).split('-')[0], rb = String(b.Code).split('-')[0];
+          return ra.localeCompare(rb, 'fr', { numeric: true }) || ((Number(a.Priorite) || 99) - (Number(b.Priorite) || 99)) ||
+            String(a.Code).localeCompare(String(b.Code), 'fr', { numeric: true });
+        });
       for (var i = 0; i < cand.length; i++) {
-        if ((occ[cand[i].Code] || 0) < (Number(cand[i].Capacite) || 6)) return cand[i].Code;
+        if ((occ[String(cand[i].Code).toUpperCase()] || 0) + need <= capOf(cand[i])) return cand[i].Code;
       }
       return null;
     }
-    return pick(cat) || pick('Divers') || 'À DÉFINIR';
+    return pick(cat) || (ZONES_TRANSIT.indexOf(cat) < 0 ? pick(CAT_DEFAUT) : null) || 'À DÉFINIR';
   }
 
   function nextId(articles) {
@@ -112,13 +158,13 @@ var Core = (function () {
     var codes = splitCodes(a.Codes);
     checkCodesFree(db.articles, codes, null);
     var q = num(a.Quantite || 0); if (!(q >= 0)) throw new Error('Quantité invalide');
-    var cat = norm(a.Categorie) || 'Divers';
+    var cat = norm(a.Categorie) || CAT_DEFAUT, place = placeVal(a.Place);
     var art = {
       ID: nextId(db.articles), Codes: codes.join(', '), Designation: norm(a.Designation),
       Reference: norm(a.Reference), Marque: norm(a.Marque), Categorie: cat,
       Unite: norm(a.Unite) || 'pièce', Quantite: q, SeuilMini: num(a.SeuilMini || 0) || 0,
-      Emplacement: norm(a.Emplacement) || autoPlace(cat, db.articles, db.locs),
-      DateCreation: now(), DerniereMaj: now(), MajPar: user || '?', Notes: norm(a.Notes)
+      Emplacement: (norm(a.Emplacement) || autoPlace(cat, db.articles, db.locs, place)).toUpperCase(),
+      DateCreation: now(), DerniereMaj: now(), MajPar: user || '?', Notes: norm(a.Notes), Place: place
     };
     db.articles.push(art);
     return { article: art, mvt: mvt('CRÉATION', art, q, user) };
@@ -135,8 +181,15 @@ var Core = (function () {
     } else if (r.type === 'INVENTAIRE') { delta = q - cur; }
     else throw new Error('Type de mouvement inconnu');
     art.Quantite = Math.round((cur + delta) * 1000) / 1000;
+    if (r.place !== undefined && r.place !== '' && r.place !== null) art.Place = placeVal(r.place);
+    var extra = { affaire: r.affaire, comment: r.comment || '' };
+    var to = norm(r.emplacement).replace(/^LOC:/i, '').toUpperCase();
+    if (to && to !== String(art.Emplacement).toUpperCase()) {
+      extra.comment = (extra.comment ? extra.comment + ' · ' : '') + 'rangé ' + (art.Emplacement || '?') + ' → ' + to;
+      art.Emplacement = to;
+    }
     touch(art, user);
-    return { article: art, mvt: mvt(r.type, art, delta, user, r) };
+    return { article: art, mvt: mvt(r.type, art, delta, user, extra) };
   }
 
   function relocate(db, r, user) {
@@ -151,7 +204,7 @@ var Core = (function () {
     var art = findById(db.articles, r.id); if (!art) throw new Error('Article introuvable');
     var f = r.fields || {};
     EDITABLE.forEach(function (k) {
-      if (f[k] !== undefined) art[k] = k === 'SeuilMini' ? (num(f[k]) || 0) : norm(f[k]);
+      if (f[k] !== undefined) art[k] = k === 'Place' ? placeVal(f[k]) : k === 'SeuilMini' ? (num(f[k]) || 0) : norm(f[k]);
     });
     if (f.Codes !== undefined) {
       var codes = splitCodes(f.Codes); checkCodesFree(db.articles, codes, art.ID); art.Codes = codes.join(', ');
@@ -171,7 +224,7 @@ var Core = (function () {
   }
 
   return {
-    CATEGORIES: CATEGORIES, ART_COLS: ART_COLS, MVT_COLS: MVT_COLS, LOC_COLS: LOC_COLS,
+    PLACES: PLACES, placeOf: placeOf, placeVal: placeVal, capOf: capOf, fill: fill, CATEGORIES: CATEGORIES, IMPLANTATION: IMPLANTATION, CAT_DEFAUT: CAT_DEFAUT, ZONES_TRANSIT: ZONES_TRANSIT, ART_COLS: ART_COLS, MVT_COLS: MVT_COLS, LOC_COLS: LOC_COLS,
     defaultLocations: defaultLocations, splitCodes: splitCodes, findById: findById, findByCode: findByCode,
     occupancy: occupancy, autoPlace: autoPlace, create: create, move: move, relocate: relocate,
     update: update, addCode: addCode
